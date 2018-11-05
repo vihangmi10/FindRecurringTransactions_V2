@@ -9,7 +9,8 @@ router.get('/', (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
-    let recurringTransactions = await upsertTransactionsHandler(req.body);
+    let recurringTransactionsMap = await upsertTransactionsHandler(req.body);
+    res.status(200).send(recurringTransactionsMap);
 });
 
 export default router;
