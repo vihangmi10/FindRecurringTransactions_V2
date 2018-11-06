@@ -216,12 +216,15 @@ const upsertTransactions = async (transactionArray) => {
         return (lowerCaseKey1 < lowerCaseKey2) ? -1 : (lowerCaseKey1 > lowerCaseKey2) ? 1 : 0;
 
     }));
-    // Store it to MONGO DB
-    //console.log('SORTED ARRAY IS -------');
+    let variable={};
+    let iterator = [...sortedMap.keys()];
+    iterator.forEach((key)=> {
+        variable = sortedMap.get(key);
+    });
+    console.log('ARRAY TO BE RETURNED IS -----');
+    console.log(variable);
+    return variable;
 
-
-    return sortedMap;
-    //getTransaction(sortedMap);
 
 };
 
