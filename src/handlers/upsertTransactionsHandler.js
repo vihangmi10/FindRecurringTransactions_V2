@@ -1,9 +1,11 @@
 import similarString from '../utils/strings';
 import dateFunctions from '../utils/dates';
 import amountFunctions from '../utils/amount';
-import getTransaction from '../handlers/getTransactionsHandler';
-
 let storingTransactionsMAP = new Map();
+/**
+ *DB CONNECTION
+ *
+ */
 
 Set.prototype.intersection = function(otherSet)
 {
@@ -42,6 +44,37 @@ Set.prototype.union = function(otherSet)
     // return the values of unionSet
     return unionSet;
 };
+const predictAmountandDate = arrayOfRecurringTransactions => {
+    for(let i =0; i<arrayOfRecurringTransactions.length; i++) {
+        let predictionObject = {};
+        let setOfRecurringTransactions = arrayOfRecurringTransactions[i];
+        let arrayOfTransactionInSet = [...setOfRecurringTransactions.values()];
+        let name = arrayOfTransactionInSet[0].name;
+        let user_id = arrayOfTransactionInSet[0].user_id;
+        let avgAmount = 0;
+        let avgRecurrencePeriod = 0;
+        let lastRecurringDate = arrayOfTransactionInSet[arrayOfTransactionInSet.length -1].date;
+
+        for(let j =0; j <arrayOfTransactionInSet.length ; j++) {
+
+            if (arrayOfTransactionInSet[j+1]){
+                let num_of_days_between_dates = dateFunctions.daysBetweenDates(arrayOfTransactionInSet[j].date, arrayOfTransactionInSet[j+1].date);
+                avgRecurrencePeriod = dateFunctions.avgRecurrencePeriod(avgRecurrencePeriod, num_of_days_between_dates);
+            }
+            avgAmount = amountFunctions.averageAmount(arrayOfTransactionInSet[j].amount, avgAmount);
+        }
+        let nextPredictedDate = dateFunctions.nextRecuringDate(lastRecurringDate, avgRecurrencePeriod);
+         predictionObject = {
+             'name': name,
+             'user_id': user_id,
+            'next_amt': avgAmount.toFixed(2),
+            'next_date': nextPredictedDate
+        };
+        setOfRecurringTransactions['company_information'] = predictionObject;
+    }
+    return arrayOfRecurringTransactions;
+};
+
 /**
  * Function match key will match the current transaction name with existing transactions in the object
  * It will return an object with transaction name and all its records
@@ -76,10 +109,6 @@ const matchKey = (transactionName, storingTransactionsMAP) => {
 };
 
 const upsertTransactions = async (transactionArray) => {
-    console.log('------------------------------------------------------------------------------');
-    console.log('HOW IS THE TRANSACTION OBJECT COMING IN -------');
-    console.log(transactionArray);
-    console.log('------------------------------------------------------------------------------');
     let recurringTransactionMap = new Map();
     // Loop through each element in the transactions that are coming in and ADD each transaction into MAP based of company name
     // let transactionsInput = transactionArray.transaction;
@@ -128,14 +157,7 @@ const upsertTransactions = async (transactionArray) => {
                    let amount_difference_between_2_3 = amountFunctions.amountDifference(arrayOfTransactionsForOneCompany[j].amount, arrayOfTransactionsForOneCompany[k].amount);
                    //let averageAmount = amountFunctions.averageAmount(amount_difference_between_1_2,amount_difference_between_2_3);
                    let recurrencePeriodDifference = dateFunctions.recurrencePeriodDifference(num_of_days_between_1_2, num_of_days_between_2_3);
-                 //  let averageRecurrencePeriod = dateFunctions.avgRecurrencePeriod(num_of_days_between_1_2,num_of_days_between_2_3);
-                 //   let name = key;
-                 //   let user_id = arrayOfTransactionsForOneCompany[i].user_id;
-                 //    let displayObj = {
-                 //        'name': name,
-                 //        'user_id': user_id,
-                 //        'next_amt': averageAmount
-                 //    };
+
                    if (amount_difference_between_1_2 && amount_difference_between_2_3 && recurrencePeriodDifference) {
                        tripleSet.add(arrayOfTransactionsForOneCompany[i]);
                        tripleSet.add(arrayOfTransactionsForOneCompany[j]);
@@ -162,8 +184,30 @@ const upsertTransactions = async (transactionArray) => {
         let cleanedArray = arrayOfTuples.filter((el)=> {
             return el.size !== 0;
         });
+        let arrayToBeStored = predictAmountandDate(cleanedArray);
+
+        let objectToBeStore = {};
+        let transactionArray = [];
+        if(arrayToBeStored.length>1) {
+            for(let i =0 ; i<arrayToBeStored.length ; i++){
+                console.log(arrayToBeStored[i]);
+                let setOfRecurringTransactionsArray = [...arrayToBeStored[i]];
+               objectToBeStore['name'] = arrayToBeStored[i].company_information.name;
+               objectToBeStore['user_id'] = arrayToBeStored[i].company_information.user_id;
+               objectToBeStore['transactions'] = setOfRecurringTransactionsArray;
+               transactionArray.push(objectToBeStore);
+            }
+        } else {
+            let setOfRecurringTransactionsArray = [...arrayToBeStored[0]];
+            objectToBeStore['name'] = arrayToBeStored[0].company_information.name;
+            objectToBeStore['user_id'] = arrayToBeStored[0].company_information.user_id;
+            objectToBeStore['next_amt'] = arrayToBeStored[0].company_information.next_amt;
+            objectToBeStore['next_date'] = arrayToBeStored[0].company_information.next_date;
+            objectToBeStore['transactions'] = setOfRecurringTransactionsArray;
+            transactionArray.push(objectToBeStore);
+        }
         // Store it in a MAP with key as company name and array of sets
-        recurringTransactionMap.set(key, cleanedArray);
+        recurringTransactionMap.set(key, transactionArray);
     });
 
     let sortedMap = new Map([...recurringTransactionMap.entries()].sort((entry1, entry2)=>{
@@ -173,6 +217,8 @@ const upsertTransactions = async (transactionArray) => {
 
     }));
     // Store it to MONGO DB
+    //console.log('SORTED ARRAY IS -------');
+
 
     return sortedMap;
     //getTransaction(sortedMap);

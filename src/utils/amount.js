@@ -7,6 +7,9 @@ const amountDifference = (amount1, amount2)=> {
     return amountPercentage <= AMOUNT_DIFFERENCE_THRESHOLD;
 };
 const averageAmount = (amount1, amount2) => {
+    if (amount1 && amount2 === 0) {
+        return amount1;
+    }
   return ((amount1 + amount2)/2);
 };
 

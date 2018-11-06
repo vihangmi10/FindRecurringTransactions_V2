@@ -17,8 +17,9 @@ const avgRecurrencePeriod = (existingRecurrencePeriod, currentRecurrencePeriod) 
     }
   return Math.round(((existingRecurrencePeriod + currentRecurrencePeriod)/2));
 };
-const nextRecuuringDate = (existinDate, averageRecurrencePeriod) => {
-  return moment(existinDate).add('days', averageRecurrencePeriod);
+const nextRecuringDate = (lastAvailableRecurringDate, averageRecurrencePeriod) => {
+    let nextDate = moment(lastAvailableRecurringDate).add(averageRecurrencePeriod,'days');
+  return nextDate.format();
 
 };
 
@@ -26,5 +27,5 @@ export default {
     daysBetweenDates,
     recurrencePeriodDifference,
     avgRecurrencePeriod,
-    nextRecuuringDate
+    nextRecuringDate
 }
